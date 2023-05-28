@@ -325,6 +325,15 @@ if [ -d "$TARGET_APP_FRAMEWORKS_PATH" ]; then
     fi
 fi
 
+echo "Code Signing Root Path Dylibs"
+if [ "$USE_ORIGINAL_ENTITLEMENTS" = true ]; then
+    echo "/usr/bin/codesign --force --sign $EXPANDED_CODE_SIGN_IDENTITY --entitlements $ENTITLEMENTS $TARGET_APP_PATH/*.dylib"
+    /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --entitlements "$ENTITLEMENTS" "$TARGET_APP_PATH"/*.dylib
+else
+    echo "/usr/bin/codesign --force --sign $EXPANDED_CODE_SIGN_IDENTITY $TARGET_APP_PATH/*.dylib"
+    /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$TARGET_APP_PATH"/*.dylib
+fi
+
 echo "Code Signing App Binary"
 if [ "$USE_ORIGINAL_ENTITLEMENTS" = true ]; then
     /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none --entitlements "$ENTITLEMENTS" "$TARGET_APP_PATH"
