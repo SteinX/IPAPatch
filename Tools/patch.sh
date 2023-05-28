@@ -274,8 +274,7 @@ rsync -av --exclude=".*" "${RESOURCES_TO_INJECT_PATH}/" "$TARGET_APP_CONTENTS_PA
 # ---------------------------------------------------
 # 6. Remove Plugins/Watch (AppExtensions), To Simplify the Signing Process
 
-echo "Removing AppExtensions"
-rm -rf "$TARGET_APP_CONTENTS_PATH/PlugIns" || true
+echo "Removing AppWatch content"
 rm -rf "$TARGET_APP_CONTENTS_PATH/Watch" || true
 
 if [ "$REMOVE_WATCHPLACEHOLDER" = true ]; then
@@ -283,6 +282,29 @@ if [ "$REMOVE_WATCHPLACEHOLDER" = true ]; then
     rm -rf "$TARGET_APP_CONTENTS_PATH/com.apple.WatchPlaceholder" || true
 fi
 
+echo "Code Signing App Extensions"
+if [ -d "$TARGET_APP_CONTENTS_PATH/PlugIns" ]; then
+    for appex in "$TARGET_APP_CONTENTS_PATH/PlugIns"/*.appex; do
+        if [ -d "$appex" ]; then
+            # 获取当前Bundle ID
+            old_appex_bundle_id=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$appex/Info.plist")
+            # 仅保留旧Bundle ID的最后一个组件
+            old_appex_bundle_id_last=$(echo "$old_appex_bundle_id" | awk -F "." '{print $NF}')
+            # 创建新的Bundle ID
+            appex_bundle_id="$PRODUCT_BUNDLE_IDENTIFIER.$old_appex_bundle_id_last"
+            # 更新Bundle ID
+            /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $appex_bundle_id" "$appex/Info.plist"
+            echo "Updated Bundle ID for $appex to $appex_bundle_id"
+
+            echo "Signing $appex"
+            if [ "$USE_ORIGINAL_ENTITLEMENTS" = true ]; then
+                /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --entitlements "$ENTITLEMENTS" "$appex"
+            else
+                /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" "$appex"
+            fi
+        fi
+    done
+fi
 
 # ---------------------------------------------------
 # 7. Update Info.plist for Target App
